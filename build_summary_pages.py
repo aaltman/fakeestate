@@ -20,19 +20,21 @@ def init_page(path="index.html"):
 def local_path_from_apn(apn):
     return apn + ".html"
 
-def insert_link_in_index(index_file, apn):
+def insert_link_in_index(index_file, apn, address):
     print "Linking into index: " + apn
-    index_file.write('<li><a href="' + local_path_from_apn(apn) + '">' + apn + '</a></li>\n')
+    index_file.write('<li><a href="' + local_path_from_apn(apn) + '">' + address + '</a></li>\n')
 
-def write_page_and_close(index_file):
-    index_file.write("</html></body>\n")
-    close(index_page_file)
+def write_page_and_close(page):
+    page.write("</html></body>\n")
+    page.close()
 
 def insert_google_streetview_image(page, street_address):
-    pass # FIXME implement
+    page.write("""<img src="http://maps.googleapis.com/maps/api/streetview?size=800x600&location=""")
+    page.write(urllib.quote_plus(street_address))
+    page.write("""&sensor=false&key=""" + open("apikey").readlines()[0].strip() + """" />\n""") 
 
 def collect_specifics_at_apn(apn, address):
-    print "Building page for property ID " + apn + ": " + addr
+    print "Building page for property ID " + apn + ": " + address
     apn_page = init_page(local_path_from_apn(apn))
 
     # Street View image at the top.
@@ -40,9 +42,14 @@ def collect_specifics_at_apn(apn, address):
 
     # Table soup objects to append to the body of the index page.
     tables = []
-    for url in map(lambda postfix: baseurl + postfix, section_url.values()):
+    for url in map(lambda postfix: baseurl + "/" + postfix + apn, section_url.values()):
         section_soup = BeautifulSoup(urllib.urlopen(url))
-        tables = section_soup.first("div", {"id":"content"}).findAll("table")
+        try:
+            tables = section_soup.first("div", {"id":"content"}).findAll("table")
+        except AttributeError:
+            print """Couldn't find <div id="content"> at url """ + url
+            print "Exiting..."
+            exit(-1)
         for t in tables:
             apn_page.write(str(t))
 
@@ -54,11 +61,12 @@ def apns_and_addresses_from_local_cache(cache_path="3and4bldg_results.html.parti
     results_soup = BeautifulSoup(open(cache_path).read())
     
     for t in results_soup.findAll("table", {"id":"maddress"}):
-        street_address = " ".join(map(lambda span_tags: span_tags.contents, t.td.findAll("span")))
-        city_state_zip = t.td.contents.split("</span>")[:-1]
+        address_contents = map(lambda span_tags: str(span_tags.contents[0]), t.td.findAll("span"))
+        street_address = " ".join(address_contents)
+        city_state_zip = str(t.td.contents[-1]).strip()
         addresses.append(" ".join([street_address, city_state_zip]))
 
-        apns.append(t.tr.findAll("th")[1].b.contents)
+        apns.append(str(t.tr.findAll("th")[1].b.contents[0]))
 
     return itertools.izip(apns, addresses)
     
@@ -70,10 +78,7 @@ def main():
 
     for apn, addr in apns_and_addresses_from_local_cache():
         collect_specifics_at_apn(apn, addr)
-        insert_link_in_index(index, apn)
-        # FIXME TESTING
-        index.close()
-        exit(-1)
+        insert_link_in_index(index, apn, addr)
 
     index.write("</ol>\n")
     write_page_and_close(index)
