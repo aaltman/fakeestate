@@ -60,7 +60,7 @@ def write_interesting_buildings_at_apn(apn, outfile=sys.stdout):
                 write_building_if_interesting(bldg_soup, outfile)
 
 #@profile
-def get_all_possible_3and4unit_buildings_by_parcel(outfile=sys.stdout, starting_entry=" 0202824110278"):
+def get_all_possible_3and4unit_buildings_by_parcel(outfile=sys.stdout, starting_entry="0202824110278"):
     start_time = datetime.datetime.now()
     count = 0
     found_start = False # Skip until starting_entry is found
