@@ -6,10 +6,9 @@ from logging.config import fileConfig
 import json
 from timeit import Timer
 import csv
-#from apiclient.discovery import build
 
 fileConfig('logging_config.ini')
-l = logging.getLogger('getzips')
+l = logging.getLogger('complete_addresses')
 l.setLevel(logging.DEBUG)
 
 GEOCODE_PREFIX = 'https://maps.googleapis.com/maps/api/geocode/json?'
@@ -28,9 +27,11 @@ COLUMN_ORDER = ['formatted_address',
   'country', 
   'place_id']
 
-key = open("apikey.secret").read()
+key = open('google_api_key.secret').read()
 l.info("Key: " + key)
-addresses = ["396 NW 182nd Ave, Beaverton, OR"]
+# Test value: addresses = ["396 NW 182nd Ave, Beaverton, OR"]
+addresses = open('Zillowfavs.txt').readlines()
+l.info("Loaded %d addresses" % len(addresses))
 
 def type_and_value_from_address_component(gmaps_address_component):
     # We can (usually?) throw out any type past the first; 
@@ -53,7 +54,11 @@ def complete_address(gmaps_json):
     completed['formatted_address'] = results['formatted_address']
     for component in results['address_components']:
         key, val = type_and_value_from_address_component(component)
-        completed[key] = val
+        
+        # Only add headers we've specified, so we don't get sparse
+        # columns.
+        if key in COLUMN_ORDER:
+            completed[key] = val
     completed['latitude'] = results['geometry']['location']['lat']
     completed['longitude'] = results['geometry']['location']['lng']
     completed['place_id'] = results['place_id']
@@ -62,8 +67,8 @@ def complete_address(gmaps_json):
     return completed
 
 def main():
-    #completed_addresses = []
-    writer = csv.DictWriter(open(CSV_OUT_PATH, 'w'), COLUMN_ORDER)
+    # Avoid adding extra newlines: http://stackoverflow.com/a/7201002/189297
+    writer = csv.DictWriter(open(CSV_OUT_PATH, 'w', newline=''), COLUMN_ORDER)
     writer.writeheader()
 
     for ad in addresses:
@@ -74,14 +79,9 @@ def main():
         logging.debug("Raw results: \n" + results)
         j = json.loads(results)
         writer.writerow(complete_address(j))
-        #completed_addresses.extend(complete_address(j))
 
     l.info("Retrieved %d addresses." % len(addresses))
 
-    #with open(CSV_OUT_PATH, 'w') as csvfile:
-        
-		
-        
 if __name__ == '__main__':
     t = Timer("main()", "from __main__ import main")
     print(t.timeit(number=1))
