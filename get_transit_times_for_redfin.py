@@ -54,7 +54,10 @@ def text_from_node(name, tree):
     l.debug("Searching for " + search_string)
     results = tree.findall(search_string)
     l.debug("Found: " + str(results))
-    return results[0].text
+    if len(results) == 0:
+        return ""
+    else:
+        return results[0].text
  
 def api_results_from(lat, long, min, date='2016-10-03', time='8:55am', arr='A'):
     """Given a latitude and longitude to start from, get an itinerary to 
@@ -73,8 +76,8 @@ def api_results_from(lat, long, min, date='2016-10-03', time='8:55am', arr='A'):
     return results
     
 def main():
-    reader = csv.DictReader(open('redfin_2016-10-06-07-15-48.csv'))
-    writer = csv.DictWriter(open('redfin_2016-10-06-07-15-48_with_transit_times.csv', 'w', newline=''), FIELDS)
+    reader = csv.DictReader(open('redfin_2016-10-18-18-06-09_results.csv'))
+    writer = csv.DictWriter(open('redfin_2016-10-18-18-06-09_with_transit_times.csv', 'w', newline=''), FIELDS)
     writer.writeheader()
     
     for row in reader:
@@ -85,6 +88,10 @@ def main():
                        'transit_start_time': text_from_node('startTime', xml)}
         new_row = row.copy()
         new_row.update(new_columns)
+        trash_keys = new_row.keys() - FIELDS
+        l.info("Deleting fields: " + str(trash_keys))
+        for key in trash_keys:
+            del(new_row[key])
         writer.writerow(new_row)
         #exit()
         
